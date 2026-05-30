@@ -1,238 +1,176 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { ThemeToggle } from "./theme-toggle";
 
-const API = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
-interface Run {
-  started_at: string;
-  error_message: string;
-  filename: string;
-  environment: string;
-  status: "success" | "failed";
-  pr_url: string | null;
-  test_passed: boolean | null;
-  branch?: string;
-  completed_at?: string;
-}
+const STEPS = [
+  {
+    icon: "🚨",
+    title: "Sentry detects a crash",
+    desc: "Your app throws an exception in production. Sentry captures it and fires a webhook to DevLoop instantly.",
+  },
+  {
+    icon: "🧠",
+    title: "Two-LLM pipeline diagnoses the bug",
+    desc: "A fast analyzer LLM reads the error and stack trace to pinpoint the root cause. A code-focused fixer LLM then reads only the broken file and the analysis — writing a minimal, surgical patch.",
+  },
+  {
+    icon: "🧪",
+    title: "Patch is tested in a sandbox",
+    desc: "The fix runs in an isolated Docker container against your test suite before touching your repo.",
+  },
+  {
+    icon: "🔀",
+    title: "Pull request opened automatically",
+    desc: "DevLoop commits the fix to a new branch and opens a PR on your GitHub repo — with root cause, fix summary, and test results in the description.",
+  },
+  {
+    icon: "📣",
+    title: "Slack notification sent",
+    desc: "Your team gets a Slack message with the error, fix summary, and a direct link to the PR. You review and merge.",
+  },
+];
 
-function StatusBadge({ status }: { status: string }) {
-  const colors: Record<string, string> = {
-    success: "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30",
-    failed: "bg-red-500/20 text-red-300 border border-red-500/30",
-  };
+const FEATURES = [
+  { icon: "⚡", label: "Fixes in minutes", sub: "not hours on-call" },
+  { icon: "🔐", label: "OAuth — no tokens pasted", sub: "GitHub + Slack OAuth" },
+  { icon: "👥", label: "Multi-user, isolated", sub: "each user sees only their runs" },
+  { icon: "📡", label: "Live log stream", sub: "watch the agent work in real time" },
+  { icon: "🏪", label: "Multi-repo support", sub: "connect as many repos as you need" },
+  { icon: "🧪", label: "Sandboxed testing", sub: "never pushes untested code" },
+];
+
+export default function Landing() {
   return (
-    <span className={`px-2 py-0.5 rounded text-xs font-medium ${colors[status] ?? "bg-zinc-700 text-zinc-300"}`}>
-      {status}
-    </span>
-  );
-}
-
-function TestBadge({ passed }: { passed: boolean | null }) {
-  if (passed === null) return <span className="text-zinc-500 text-xs">—</span>;
-  return passed ? (
-    <span className="text-emerald-400 text-xs">✅ pass</span>
-  ) : (
-    <span className="text-red-400 text-xs">❌ fail</span>
-  );
-}
-
-function timeAgo(iso: string) {
-  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (diff < 60) return `${diff}s ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return new Date(iso).toLocaleDateString();
-}
-
-export default function Home() {
-  const [runs, setRuns] = useState<Run[]>([]);
-  const [logs, setLogs] = useState<string[]>([]);
-  const [triggering, setTriggering] = useState(false);
-  const [triggerMsg, setTriggerMsg] = useState("");
-  const logRef = useRef<HTMLDivElement>(null);
-
-  const fetchRuns = () => {
-    fetch(`${API}/runs`)
-      .then((r) => r.json())
-      .then(setRuns)
-      .catch(() => {});
-  };
-
-  useEffect(() => {
-    fetchRuns();
-    const interval = setInterval(fetchRuns, 5000);
-
-    const es = new EventSource(`${API}/logs/stream`);
-    es.onmessage = (e) => {
-      setLogs((prev) => [...prev.slice(-499), e.data]);
-    };
-
-    return () => {
-      clearInterval(interval);
-      es.close();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (logRef.current) {
-      logRef.current.scrollTop = logRef.current.scrollHeight;
-    }
-  }, [logs]);
-
-  const trigger = async () => {
-    setTriggering(true);
-    setTriggerMsg("");
-    try {
-      const r = await fetch(`${API}/trigger`, { method: "POST" });
-      const data = await r.json();
-      setTriggerMsg(data.message ?? "Pipeline started");
-      setTimeout(fetchRuns, 3000);
-    } catch {
-      setTriggerMsg("Failed to reach server");
-    } finally {
-      setTriggering(false);
-      setTimeout(() => setTriggerMsg(""), 4000);
-    }
-  };
-
-  const successCount = runs.filter((r) => r.status === "success").length;
-  const failCount = runs.filter((r) => r.status === "failed").length;
-
-  return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 font-mono">
-      {/* Header */}
-      <header className="border-b border-zinc-800 px-6 py-4 flex items-center justify-between">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 font-mono flex flex-col">
+      {/* Nav */}
+      <nav className="border-b border-zinc-800 px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">🔧</span>
+          <span className="font-bold text-white text-lg">DevLoop</span>
+        </div>
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🔧</span>
-          <div>
-            <h1 className="text-lg font-bold text-white">DevLoop</h1>
-            <p className="text-xs text-zinc-500">Production incident resolution agent</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex gap-4 text-sm">
-            <span className="text-emerald-400">{successCount} fixed</span>
-            <span className="text-red-400">{failCount} failed</span>
-            <span className="text-zinc-500">{runs.length} total</span>
-          </div>
-          <button
-            onClick={trigger}
-            disabled={triggering}
-            className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm rounded transition-colors"
+          <ThemeToggle />
+          <Link
+            href="/dashboard"
+            className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded transition-colors"
           >
-            {triggering ? "Running..." : "▶ Trigger Demo"}
-          </button>
+            Open Dashboard →
+          </Link>
         </div>
-      </header>
+      </nav>
 
-      {triggerMsg && (
-        <div className="bg-indigo-900/40 border-b border-indigo-700/50 px-6 py-2 text-sm text-indigo-300">
-          {triggerMsg}
+      {/* Hero */}
+      <section className="flex flex-col items-center justify-center text-center px-6 py-24 gap-6">
+        <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-900/40 border border-indigo-700/50 rounded-full text-indigo-300 text-xs mb-2">
+          <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse" />
+          AI-powered production incident resolution
         </div>
-      )}
 
-      <div className="flex" style={{ height: "calc(100vh - 65px)" }}>
-        {/* Left: Run history */}
-        <div className="w-1/2 border-r border-zinc-800 flex flex-col">
-          <div className="px-4 py-3 border-b border-zinc-800 text-xs text-zinc-500 uppercase tracking-wider">
-            Run History
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            {runs.length === 0 ? (
-              <div className="p-8 text-center text-zinc-600 text-sm">
-                No runs yet. Click &quot;Trigger Demo&quot; to start.
+        <h1 className="text-4xl md:text-6xl font-bold text-white leading-tight max-w-3xl">
+          Sentry fires.<br />
+          <span className="text-indigo-400">DevLoop fixes.</span>
+        </h1>
+
+        <p className="text-zinc-400 text-lg max-w-xl leading-relaxed">
+          DevLoop watches your production errors, diagnoses the root cause with a two-LLM pipeline, and opens a pull request with a tested fix — while you sleep.
+        </p>
+
+        <div className="flex flex-col sm:flex-row gap-3 mt-4">
+          <Link
+            href="/dashboard"
+            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg transition-colors"
+          >
+            Try it yourself →
+          </Link>
+          <a
+            href="https://github.com/rishikesh183/devloop-demo-app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm rounded-lg transition-colors border border-zinc-700"
+          >
+            View demo repo ↗
+          </a>
+        </div>
+
+        <p className="text-zinc-600 text-xs mt-2">
+          No prod bugs? Hit &ldquo;Trigger Demo&rdquo; in the dashboard &mdash; we keep a live buggy repo for exactly this.
+        </p>
+      </section>
+
+      {/* Demo video */}
+      <section className="max-w-4xl mx-auto w-full px-6 pb-16">
+        <h2 className="text-xs uppercase tracking-widest text-zinc-500 mb-6 text-center">See it in action</h2>
+        <div className="relative rounded-xl overflow-hidden border border-zinc-800 bg-zinc-900 shadow-2xl">
+          <video
+            src="/demo_recording.mp4"
+            controls
+            playsInline
+            className="w-full"
+            poster=""
+          />
+        </div>
+        <p className="text-zinc-600 text-xs text-center mt-3">Full demo: error detected → patch written → PR opened in ~45 seconds</p>
+      </section>
+
+      {/* How it works */}
+      <section className="max-w-3xl mx-auto w-full px-6 pb-20">
+        <h2 className="text-xs uppercase tracking-widest text-zinc-500 mb-8 text-center">How it works</h2>
+
+        <div className="relative">
+          {/* vertical line */}
+          <div className="absolute left-6 top-0 bottom-0 w-px bg-zinc-800" />
+
+          <div className="space-y-0">
+            {STEPS.map((step, i) => (
+              <div key={i} className="flex gap-6 relative pl-14">
+                {/* circle on line */}
+                <div className="absolute left-0 top-4 w-12 h-12 flex items-center justify-center bg-zinc-900 border border-zinc-800 rounded-full text-xl z-10">
+                  {step.icon}
+                </div>
+                <div className="pb-10 pt-3">
+                  <p className="text-white font-semibold text-sm mb-1">{step.title}</p>
+                  <p className="text-zinc-400 text-sm leading-relaxed">{step.desc}</p>
+                </div>
               </div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-zinc-500 text-xs border-b border-zinc-800">
-                    <th className="px-4 py-2 text-left">Error</th>
-                    <th className="px-4 py-2 text-left">File</th>
-                    <th className="px-4 py-2 text-left">Tests</th>
-                    <th className="px-4 py-2 text-left">Status</th>
-                    <th className="px-4 py-2 text-left">PR</th>
-                    <th className="px-4 py-2 text-left">When</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {runs.map((run, i) => (
-                    <tr key={i} className="border-b border-zinc-800/50 hover:bg-zinc-900/50 transition-colors">
-                      <td className="px-4 py-3 max-w-45">
-                        <span className="text-red-300 text-xs truncate block" title={run.error_message}>
-                          {run.error_message.length > 40
-                            ? run.error_message.slice(0, 40) + "…"
-                            : run.error_message}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-zinc-400 text-xs">{run.filename}</td>
-                      <td className="px-4 py-3">
-                        <TestBadge passed={run.test_passed} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <StatusBadge status={run.status} />
-                      </td>
-                      <td className="px-4 py-3">
-                        {run.pr_url ? (
-                          <a
-                            href={run.pr_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-indigo-400 hover:text-indigo-300 text-xs underline"
-                          >
-                            View PR ↗
-                          </a>
-                        ) : (
-                          <span className="text-zinc-600 text-xs">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-zinc-500 text-xs whitespace-nowrap">
-                        {timeAgo(run.started_at)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+            ))}
           </div>
         </div>
+      </section>
 
-        {/* Right: Live logs */}
-        <div className="w-1/2 flex flex-col">
-          <div className="px-4 py-3 border-b border-zinc-800 text-xs text-zinc-500 uppercase tracking-wider flex items-center justify-between">
-            <span>Live Logs</span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-emerald-500">streaming</span>
-            </span>
-          </div>
-          <div
-            ref={logRef}
-            className="flex-1 overflow-y-auto p-4 text-xs leading-relaxed space-y-0.5"
-          >
-            {logs.length === 0 ? (
-              <p className="text-zinc-600">Waiting for logs...</p>
-            ) : (
-              logs.map((line, i) => {
-                const isError = line.includes("[ERROR]");
-                const isWarn = line.includes("[WARNING]");
-                const isInfo = line.includes("[INFO]");
-                const color = isError
-                  ? "text-red-400"
-                  : isWarn
-                  ? "text-yellow-400"
-                  : isInfo
-                  ? "text-zinc-300"
-                  : "text-zinc-500";
-                return (
-                  <div key={i} className={color}>
-                    {line}
-                  </div>
-                );
-              })
-            )}
+      {/* Features grid */}
+      <section className="border-t border-zinc-800 bg-zinc-900/30 px-6 py-16">
+        <div className="max-w-3xl mx-auto">
+          <h2 className="text-xs uppercase tracking-widest text-zinc-500 mb-8 text-center">Built for real teams</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {FEATURES.map((f, i) => (
+              <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 flex flex-col gap-1">
+                <span className="text-2xl">{f.icon}</span>
+                <span className="text-white text-sm font-semibold">{f.label}</span>
+                <span className="text-zinc-500 text-xs">{f.sub}</span>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
+      </section>
+
+      {/* CTA */}
+      <section className="flex flex-col items-center justify-center text-center px-6 py-20 gap-4">
+        <h2 className="text-2xl font-bold text-white">Ready to close that incident tab?</h2>
+        <p className="text-zinc-400 text-sm max-w-md">
+          Connect your GitHub and Slack, add a repo, and let DevLoop handle the next 3am crash.
+        </p>
+        <Link
+          href="/dashboard"
+          className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg transition-colors mt-2"
+        >
+          Open Dashboard →
+        </Link>
+      </section>
+
+      <footer className="border-t border-zinc-800 px-6 py-6 text-center text-zinc-600 text-xs">
+        DevLoop — built for the hackathon, designed for production
+      </footer>
     </div>
   );
 }

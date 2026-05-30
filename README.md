@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# DevLoop Dashboard
 
-## Getting Started
+Next.js 15 frontend for the DevLoop production incident resolution agent.
 
-First, run the development server:
+**Live:** https://devloop-frontend.vercel.app
+
+---
+
+## Pages
+
+| Route | Description |
+|---|---|
+| `/` | Landing page — hero, demo video, how-it-works steps, features |
+| `/dashboard` | Main app — live logs, run history, repo management, OAuth connect |
+
+## Features
+
+- **GitHub + Slack OAuth** — connect accounts without pasting tokens
+- **Multi-repo support** — add/remove repos, trigger pipeline per repo
+- **Live log stream** — SSE feed shows agent progress in real time
+- **Run history** — all past runs with status, PR link, test result
+- **Demo mode** — "Try Demo Repo" button fires against `rishikesh183/devloop-demo-app`
+- **Dark/light theme** — toggle in nav
+
+## Local dev
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Opens at http://localhost:3000. Backend must be running at http://localhost:8000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+# .env.local
+NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
+# For production:
+# NEXT_PUBLIC_BACKEND_URL=https://devloop-qtn8.onrender.com
+```
 
-## Learn More
+## Deploy (Vercel)
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Root directory: `dashboard`
+- Set `NEXT_PUBLIC_BACKEND_URL=https://devloop-qtn8.onrender.com` in Vercel env vars
+- No build command override needed — Vercel auto-detects Next.js
