@@ -25,6 +25,8 @@ interface User {
   github_login?: string;
   github_repo?: string;
   slack_connected?: boolean;
+  preferred_model?: string;
+  has_user_key?: boolean;
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -74,6 +76,10 @@ function ConnectPanel({ user, onUpdate, onTriggerRepo, onTriggerDemo }: {
   const [newSentry, setNewSentry] = useState("");
   const [adding, setAdding] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+  const [showModelSettings, setShowModelSettings] = useState(false);
+  const [modelKey, setModelKey] = useState("");
+  const [modelName, setModelName] = useState("");
+  const [savingModel, setSavingModel] = useState(false);
 
   const fetchRepos = () => {
     fetch(`${API}/me/repos`, { credentials: "include" })
@@ -156,6 +162,14 @@ function ConnectPanel({ user, onUpdate, onTriggerRepo, onTriggerDemo }: {
           </div>
         )}
 
+        {/* Model settings */}
+        {user.authenticated && (
+          <button onClick={() => setShowModelSettings(!showModelSettings)}
+            className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 text-xs rounded border border-zinc-700 transition-colors">
+            {user.preferred_model ? `⚡ ${user.preferred_model.split("/").pop()}` : "⚙ LLM"}
+          </button>
+        )}
+
         {/* Logout */}
         {user.authenticated && (
           <button onClick={async () => {
@@ -166,6 +180,72 @@ function ConnectPanel({ user, onUpdate, onTriggerRepo, onTriggerDemo }: {
           </button>
         )}
       </div>
+
+      {/* Model settings panel */}
+      {showModelSettings && user.authenticated && (
+        <div className="px-6 pb-4 pt-1 border-t border-zinc-800 flex flex-col gap-3">
+          <p className="text-zinc-500 text-xs pt-2">Your OpenRouter key + model overrides the default free pool for your runs.</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <input value={modelKey} onChange={(e) => setModelKey(e.target.value)}
+              placeholder={user.has_user_key ? "sk-or-v1-... (leave blank to keep)" : "sk-or-v1-... (your OpenRouter key)"}
+              className="bg-zinc-800 border border-zinc-700 text-zinc-200 text-xs px-2 py-1 rounded w-72 focus:outline-none focus:border-indigo-500" />
+            <select value={modelName} onChange={(e) => setModelName(e.target.value)}
+              className="bg-zinc-800 border border-zinc-700 text-zinc-200 text-xs px-2 py-1 rounded focus:outline-none focus:border-indigo-500">
+              <option value="">— pick model (optional) —</option>
+              <optgroup label="Free (OpenRouter)">
+                <option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B (free)</option>
+                <option value="qwen/qwen3-coder:free">Qwen3 Coder (free)</option>
+                <option value="deepseek/deepseek-v4-flash:free">DeepSeek V4 Flash (free)</option>
+                <option value="google/gemma-3-27b-it:free">Gemma 3 27B (free)</option>
+              </optgroup>
+              <optgroup label="Codex (your key required)">
+                <option value="openai/codex-mini-latest">OpenAI Codex Mini</option>
+                <option value="openai/gpt-5-codex">OpenAI GPT-5 Codex</option>
+              </optgroup>
+              <optgroup label="Paid (your key required)">
+                <option value="openai/gpt-4o">GPT-4o</option>
+                <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
+                <option value="anthropic/claude-sonnet-4-5">Claude Sonnet 4.5</option>
+                <option value="google/gemini-2.5-pro">Gemini 2.5 Pro</option>
+                <option value="deepseek/deepseek-r1">DeepSeek R1</option>
+              </optgroup>
+            </select>
+            <button disabled={savingModel || (!modelKey && !modelName)}
+              onClick={async () => {
+                setSavingModel(true);
+                const body: Record<string, string> = {};
+                if (modelKey) body.user_openrouter_key = modelKey;
+                if (modelName) body.preferred_model = modelName;
+                await fetch(`${API}/me/settings`, {
+                  method: "PATCH", credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(body),
+                });
+                setSavingModel(false);
+                setModelKey(""); setShowModelSettings(false);
+                onUpdate();
+              }}
+              className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs rounded disabled:opacity-40">
+              {savingModel ? "..." : "Save"}
+            </button>
+            {(user.preferred_model || user.has_user_key) && (
+              <button onClick={async () => {
+                await fetch(`${API}/me/settings`, {
+                  method: "PATCH", credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ preferred_model: "", user_openrouter_key: "" }),
+                });
+                onUpdate();
+              }} className="text-zinc-600 hover:text-red-400 text-xs">
+                Reset to free pool
+              </button>
+            )}
+          </div>
+          {user.preferred_model && (
+            <p className="text-emerald-500 text-xs">Active: {user.preferred_model} {user.has_user_key ? "· custom key" : "· default keys"}</p>
+          )}
+        </div>
+      )}
 
       {/* Add repo form */}
       {showAdd && (
