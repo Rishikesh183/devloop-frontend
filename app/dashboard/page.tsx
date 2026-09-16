@@ -312,7 +312,7 @@ function DemoConfirmModal({ onConfirm, onCancel }: { onConfirm: () => void; onCa
 
         <div className="bg-zinc-800/60 border border-zinc-700 rounded-lg p-4 space-y-2 text-sm text-zinc-300">
           <p className="text-zinc-400 text-xs uppercase tracking-wider mb-1">What happens next</p>
-          <div className="flex items-start gap-2"><span className="text-indigo-400 mt-0.5">1.</span><span>DevLoop reads a live bug from <code className="text-emerald-400 text-xs">rishikesh183/devloop-demo-app</code></span></div>
+          <div className="flex items-start gap-2"><span className="text-indigo-400 mt-0.5">1.</span><span>DevLoop reads a live bug from <code className="text-emerald-400 text-xs">ManasaVeena1602/devloop-demo-app</code></span></div>
           <div className="flex items-start gap-2"><span className="text-indigo-400 mt-0.5">2.</span><span>Two-LLM pipeline diagnoses &amp; writes a fix</span></div>
           <div className="flex items-start gap-2"><span className="text-indigo-400 mt-0.5">3.</span><span>Fix is tested in a sandbox</span></div>
           <div className="flex items-start gap-2"><span className="text-indigo-400 mt-0.5">4.</span><span>A real PR is opened on the demo repo</span></div>

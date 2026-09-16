@@ -84,7 +84,7 @@ export default function Landing() {
             Try it yourself →
           </Link>
           <a
-            href="https://github.com/rishikesh183/devloop-demo-app"
+            href="https://github.com/ManasaVeena1602/devloop-demo-app"
             target="_blank"
             rel="noopener noreferrer"
             className="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm rounded-lg transition-colors border border-zinc-700"

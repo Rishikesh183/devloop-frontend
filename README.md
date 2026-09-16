@@ -19,7 +19,7 @@ Next.js 15 frontend for the DevLoop production incident resolution agent.
 - **Multi-repo support** — add/remove repos, trigger pipeline per repo
 - **Live log stream** — SSE feed shows agent progress in real time
 - **Run history** — all past runs with status, PR link, test result
-- **Demo mode** — "Try Demo Repo" button fires against `rishikesh183/devloop-demo-app`
+- **Demo mode** — "Try Demo Repo" button fires against `ManasaVeena1602/devloop-demo-app`
 - **Dark/light theme** — toggle in nav
 
 ## Local dev
