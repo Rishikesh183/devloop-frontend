@@ -161,11 +161,11 @@ function ConnectPanel({ user, onUpdate, onTriggerRepo, onTriggerDemo }: {
               <div className="absolute left-0 top-7 z-50 w-80 bg-zinc-900 border border-zinc-700 rounded-lg p-4 shadow-xl text-xs text-zinc-300 space-y-2">
                 <p className="font-semibold text-white">Connecting Sentry to DevLoop</p>
                 <ol className="list-decimal list-inside space-y-1.5 text-zinc-400">
-                  <li>Open your <a href="https://sentry.io/settings/" target="_blank" rel="noopener noreferrer" className="text-indigo-400 underline hover:text-indigo-300">Sentry project settings</a></li>
-                  <li>Go to <strong className="text-zinc-300">Integrations → Webhooks</strong></li>
-                  <li>Add webhook URL:<br /><code className="bg-zinc-800 px-1 py-0.5 rounded text-emerald-400 break-all">https://devloop-qtn8.onrender.com/webhook/sentry</code></li>
-                  <li>Enable <strong className="text-zinc-300">issue</strong> events</li>
-                  <li>Copy the <strong className="text-zinc-300">Signing Secret</strong> → paste in &quot;Sentry secret&quot; field above</li>
+                  <li>Open <a href="https://sentry.io/settings/" target="_blank" rel="noopener noreferrer" className="text-indigo-400 underline hover:text-indigo-300">Sentry settings</a> → <strong className="text-zinc-300">Developer Settings → Custom Integrations</strong></li>
+                  <li>Create an <strong className="text-zinc-300">Internal Integration</strong>, webhook URL:<br /><code className="bg-zinc-800 px-1 py-0.5 rounded text-emerald-400 break-all">{API}/webhook/sentry</code></li>
+                  <li>Turn on <strong className="text-zinc-300">Alert Rule Action</strong>, permissions Issue &amp; Event: Read</li>
+                  <li>Copy the <strong className="text-zinc-300">Client Secret</strong> → paste in &quot;Sentry secret&quot; when adding the repo</li>
+                  <li>In <strong className="text-zinc-300">Alerts</strong>, add a rule &quot;new issue&quot; → action: send to this integration</li>
                 </ol>
                 <p className="text-zinc-600 pt-1 border-t border-zinc-800">The secret is required: DevLoop uses it to verify each webhook and to route it to this repo.</p>
               </div>
