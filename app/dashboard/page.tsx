@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ThemeToggle } from "../theme-toggle";
+import { applyEvent, PipelineView, runFromEvents, type DevloopEvent, type LiveRun } from "./pipeline";
 
 const API = process.env.NEXT_PUBLIC_BACKEND_URL || "https://devloop-qtn8.onrender.com";
 // const API = "http://localhost:8000";
+const DEMO_REPO = process.env.NEXT_PUBLIC_DEMO_REPO || "ManasaVeena1602/devloop-demo-app";
 
 interface Run {
   id?: string;
@@ -17,6 +19,15 @@ interface Run {
   test_passed: boolean | null;
   branch?: string;
   completed_at?: string;
+  attempts?: number | null;
+  reproduced?: boolean | null;
+  events?: DevloopEvent[] | null;
+}
+
+interface Scenario {
+  id: string;
+  title: string;
+  error: string;
 }
 
 interface User {
@@ -156,7 +167,7 @@ function ConnectPanel({ user, onUpdate, onTriggerRepo, onTriggerDemo }: {
                   <li>Enable <strong className="text-zinc-300">issue</strong> events</li>
                   <li>Copy the <strong className="text-zinc-300">Signing Secret</strong> → paste in &quot;Sentry secret&quot; field above</li>
                 </ol>
-                <p className="text-zinc-600 pt-1 border-t border-zinc-800">Without a Sentry secret the webhook still works — secret just verifies payload authenticity.</p>
+                <p className="text-zinc-600 pt-1 border-t border-zinc-800">The secret is required: DevLoop uses it to verify each webhook and to route it to this repo.</p>
               </div>
             </details>
           </div>
@@ -312,9 +323,9 @@ function DemoConfirmModal({ onConfirm, onCancel }: { onConfirm: () => void; onCa
 
         <div className="bg-zinc-800/60 border border-zinc-700 rounded-lg p-4 space-y-2 text-sm text-zinc-300">
           <p className="text-zinc-400 text-xs uppercase tracking-wider mb-1">What happens next</p>
-          <div className="flex items-start gap-2"><span className="text-indigo-400 mt-0.5">1.</span><span>DevLoop reads a live bug from <code className="text-emerald-400 text-xs">ManasaVeena1602/devloop-demo-app</code></span></div>
+          <div className="flex items-start gap-2"><span className="text-indigo-400 mt-0.5">1.</span><span>DevLoop reads a live bug from <code className="text-emerald-400 text-xs">{DEMO_REPO}</code></span></div>
           <div className="flex items-start gap-2"><span className="text-indigo-400 mt-0.5">2.</span><span>Two-LLM pipeline diagnoses &amp; writes a fix</span></div>
-          <div className="flex items-start gap-2"><span className="text-indigo-400 mt-0.5">3.</span><span>Fix is tested in a sandbox</span></div>
+          <div className="flex items-start gap-2"><span className="text-indigo-400 mt-0.5">3.</span><span>Writes a regression test, proves it fails on the bug and passes with the fix — retrying with test feedback if needed</span></div>
           <div className="flex items-start gap-2"><span className="text-indigo-400 mt-0.5">4.</span><span>A real PR is opened on the demo repo</span></div>
         </div>
 
@@ -335,6 +346,60 @@ function DemoConfirmModal({ onConfirm, onCancel }: { onConfirm: () => void; onCa
   );
 }
 
+function BreakProdModal({ onConfirm, onCancel }: { onConfirm: (scenario: string | null) => void; onCancel: () => void }) {
+  const [scenarios, setScenarios] = useState<Scenario[]>([]);
+  const [choice, setChoice] = useState<string>("");
+
+  useEffect(() => {
+    fetch(`${API}/demo/scenarios`).then((r) => r.json()).then((d) => Array.isArray(d) && setScenarios(d)).catch(() => {});
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+      <div className="bg-zinc-900 border border-red-900/60 rounded-xl shadow-2xl p-8 max-w-lg w-full mx-4 flex flex-col gap-5">
+        <div className="flex items-center gap-3">
+          <span className="text-3xl">💥</span>
+          <div>
+            <h2 className="text-white font-bold text-lg">Break prod?</h2>
+            <p className="text-zinc-500 text-xs">Ships a real bug to <code className="text-emerald-400">{DEMO_REPO}</code> and lets DevLoop fix it, live</p>
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="flex items-center gap-2 text-sm text-zinc-300 cursor-pointer">
+            <input type="radio" name="scenario" checked={choice === ""} onChange={() => setChoice("")} />
+            🎲 Surprise me
+          </label>
+          {scenarios.map((sc) => (
+            <label key={sc.id} className="flex items-start gap-2 text-sm text-zinc-300 cursor-pointer">
+              <input type="radio" name="scenario" className="mt-1" checked={choice === sc.id} onChange={() => setChoice(sc.id)} />
+              <span>{sc.title}<br /><code className="text-red-300/80 text-xs">{sc.error}</code></span>
+            </label>
+          ))}
+        </div>
+
+        <ol className="bg-zinc-800/60 border border-zinc-700 rounded-lg p-4 space-y-1 text-xs text-zinc-400 list-decimal list-inside">
+          <li>A bad commit lands on a fresh <code>incident/*</code> branch</li>
+          <li>A Sentry-style crash alert fires (simulated)</li>
+          <li>DevLoop finds the root cause, writes a failing regression test, fixes the bug</li>
+          <li>Tests prove red → green, then a real PR opens. Watch the clock.</li>
+        </ol>
+
+        <div className="flex gap-3 justify-end">
+          <button onClick={onCancel}
+            className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm rounded-lg transition-colors border border-zinc-700">
+            Cancel
+          </button>
+          <button onClick={() => onConfirm(choice || null)}
+            className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-semibold rounded-lg transition-colors">
+            Break it →
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const [runs, setRuns] = useState<Run[]>([]);
   const [logs, setLogs] = useState<string[]>([]);
@@ -342,6 +407,9 @@ export default function Home() {
   const [triggerMsg, setTriggerMsg] = useState("");
   const [user, setUser] = useState<User>({ authenticated: false });
   const [showDemoConfirm, setShowDemoConfirm] = useState(false);
+  const [showBreak, setShowBreak] = useState(false);
+  const [liveRuns, setLiveRuns] = useState<Record<string, LiveRun>>({});
+  const [selected, setSelected] = useState<string | null>(null);   // live run key, or "db:<run id>"
   const logRef = useRef<HTMLDivElement>(null);
 
   const fetchMe = async () => {
@@ -385,6 +453,14 @@ export default function Home() {
 
     const es = new EventSource(`${API}/logs/stream`, { withCredentials: true });
     es.onmessage = (e) => { if (!cancelled) setLogs((prev) => [...prev.slice(-499), e.data]); };
+    es.addEventListener("devloop", (e) => {
+      if (cancelled) return;
+      try {
+        const ev = JSON.parse((e as MessageEvent).data) as DevloopEvent;
+        setLiveRuns((prev) => applyEvent(prev, ev));
+        if (ev.type === "run") setSelected(ev.run);   // follow the newest run
+      } catch { /* ignore malformed event */ }
+    });
 
     return () => { cancelled = true; clearInterval(interval); es.close(); };
   }, []);
@@ -402,13 +478,36 @@ export default function Home() {
     try {
       const r = await fetch(`${API}/trigger/demo`, { method: "POST", credentials: "include" });
       const data = await r.json();
-      setTriggerMsg(data.message ?? "Pipeline started");
+      setTriggerMsg(r.ok ? (data.message ?? "Pipeline started") : (data.detail ?? `Error ${r.status}`));
       setTimeout(fetchRuns, 3000);
     } catch {
       setTriggerMsg("Failed to reach server");
     } finally {
       setTriggering(false);
       setTimeout(() => setTriggerMsg(""), 4000);
+    }
+  };
+
+  const breakProd = async (scenario: string | null) => {
+    setShowBreak(false);
+    setTriggering(true);
+    setTriggerMsg("");
+    try {
+      const r = await fetch(`${API}/demo/break`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(scenario ? { scenario } : {}),
+      });
+      const data = await r.json();
+      setTriggerMsg(r.ok ? data.message : (data.detail ?? `Error ${r.status}`));
+      if (r.ok && data.run) setSelected(data.run);
+      setTimeout(fetchRuns, 3000);
+    } catch {
+      setTriggerMsg("Failed to reach server");
+    } finally {
+      setTriggering(false);
+      setTimeout(() => setTriggerMsg(""), 5000);
     }
   };
 
@@ -423,7 +522,7 @@ export default function Home() {
         body: JSON.stringify({ repo }),
       });
       const data = await r.json();
-      setTriggerMsg(data.message ?? `Pipeline started for ${repo}`);
+      setTriggerMsg(r.ok ? (data.message ?? `Pipeline started for ${repo}`) : (data.detail ?? `Error ${r.status}`));
       setTimeout(fetchRuns, 3000);
     } catch {
       setTriggerMsg("Failed to reach server");
@@ -432,6 +531,15 @@ export default function Home() {
       setTimeout(() => setTriggerMsg(""), 4000);
     }
   };
+
+  const selectedRun: LiveRun | null = (() => {
+    if (!selected) return null;
+    if (selected.startsWith("db:")) {
+      const run = runs.find((r) => r.id === selected.slice(3));
+      return run?.events?.length ? runFromEvents(run.events) : null;
+    }
+    return liveRuns[selected] ?? null;
+  })();
 
   const successCount = runs.filter((r) => r.status === "success").length;
   const failCount = runs.filter((r) => r.status === "failed").length;
@@ -445,6 +553,7 @@ export default function Home() {
           onCancel={() => setShowDemoConfirm(false)}
         />
       )}
+      {showBreak && <BreakProdModal onConfirm={breakProd} onCancel={() => setShowBreak(false)} />}
       {/* Header */}
       <header className="border-b border-zinc-800 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -462,6 +571,14 @@ export default function Home() {
             <span className="text-zinc-500">{runs.length} total</span>
           </div>
           <ThemeToggle />
+          <button
+            onClick={() => setShowBreak(true)}
+            disabled={triggering}
+            className="px-4 py-1.5 bg-red-700 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm rounded transition-colors"
+            title="Ship a real bug to the demo repo and watch DevLoop fix it"
+          >
+            💥 Break Prod
+          </button>
           <button
             onClick={trigger}
             disabled={triggering}
@@ -484,6 +601,11 @@ export default function Home() {
       <div className="flex" style={{ height: "calc(100vh - 113px)" }}>
         {/* Left: Run history */}
         <div className="w-1/2 border-r border-zinc-800 flex flex-col">
+          {selectedRun && (
+            <div className="max-h-[65%] overflow-y-auto shrink-0">
+              <PipelineView key={selectedRun.key} run={selectedRun} />
+            </div>
+          )}
           <div className="px-4 py-3 border-b border-zinc-800 text-xs text-zinc-500 uppercase tracking-wider">
             Run History {user.github_login ? `— ${user.github_login}` : ""}
           </div>
@@ -508,18 +630,23 @@ export default function Home() {
                 </thead>
                 <tbody>
                   {runs.map((run, i) => (
-                    <tr key={run.id ?? i} className="border-b border-zinc-800/50 hover:bg-zinc-900/50 transition-colors">
+                    <tr key={run.id ?? i}
+                      onClick={() => run.id && run.events?.length && setSelected(`db:${run.id}`)}
+                      className={`border-b border-zinc-800/50 hover:bg-zinc-900/50 transition-colors ${run.events?.length ? "cursor-pointer" : ""} ${selected === `db:${run.id}` ? "bg-zinc-900" : ""}`}>
                       <td className="px-4 py-3 max-w-45">
                         <span className="text-red-300 text-xs truncate block" title={run.error_message}>
                           {run.error_message.length > 40 ? run.error_message.slice(0, 40) + "…" : run.error_message}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-zinc-400 text-xs">{run.filename}</td>
-                      <td className="px-4 py-3"><TestBadge passed={run.test_passed} /></td>
+                      <td className="px-4 py-3">
+                        <TestBadge passed={run.test_passed} />
+                        {run.attempts && run.attempts > 1 && <span className="text-amber-400 text-[10px] ml-1" title="self-healed">×{run.attempts}</span>}
+                      </td>
                       <td className="px-4 py-3"><StatusBadge status={run.status} /></td>
                       <td className="px-4 py-3">
                         {run.pr_url ? (
-                          <a href={run.pr_url} target="_blank" rel="noopener noreferrer"
+                          <a href={run.pr_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
                             className="text-indigo-400 hover:text-indigo-300 text-xs underline">
                             View PR ↗
                           </a>

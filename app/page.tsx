@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { ThemeToggle } from "./theme-toggle";
 
+const DEMO_REPO = process.env.NEXT_PUBLIC_DEMO_REPO || "ManasaVeena1602/devloop-demo-app";
+
 const STEPS = [
   {
     icon: "🚨",
@@ -84,7 +86,7 @@ export default function Landing() {
             Try it yourself →
           </Link>
           <a
-            href="https://github.com/ManasaVeena1602/devloop-demo-app"
+            href={`https://github.com/${DEMO_REPO}`}
             target="_blank"
             rel="noopener noreferrer"
             className="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm rounded-lg transition-colors border border-zinc-700"
