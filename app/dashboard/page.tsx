@@ -204,10 +204,10 @@ function ConnectPanel({ user, onUpdate, onTriggerRepo, onTriggerDemo }: {
               className="bg-zinc-800 border border-zinc-700 text-zinc-200 text-xs px-2 py-1 rounded focus:outline-none focus:border-indigo-500">
               <option value="">— pick model (optional) —</option>
               <optgroup label="Free (OpenRouter)">
-                <option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B (free)</option>
-                <option value="qwen/qwen3-coder:free">Qwen3 Coder (free)</option>
-                <option value="deepseek/deepseek-v4-flash:free">DeepSeek V4 Flash (free)</option>
-                <option value="google/gemma-3-27b-it:free">Gemma 3 27B (free)</option>
+                <option value="cohere/north-mini-code:free">Cohere North Mini Code (free)</option>
+                <option value="poolside/laguna-s-2.1:free">Poolside Laguna S 2.1 (free)</option>
+                <option value="minimax/minimax-m3.1-flash:free">MiniMax M3.1 Flash (free)</option>
+                <option value="google/gemma-4-31b-it:free">Gemma 4 31B (free)</option>
               </optgroup>
               <optgroup label="Codex (your key required)">
                 <option value="openai/codex-mini-latest">OpenAI Codex Mini</option>
