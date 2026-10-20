@@ -6,7 +6,7 @@ import { applyEvent, PipelineView, runFromEvents, type DevloopEvent, type LiveRu
 
 const API = process.env.NEXT_PUBLIC_BACKEND_URL || "https://devloop-qtn8.onrender.com";
 // const API = "http://localhost:8000";
-const DEMO_REPO = process.env.NEXT_PUBLIC_DEMO_REPO || "ManasaVeena1602/devloop-demo-app";
+const DEMO_REPO = process.env.NEXT_PUBLIC_DEMO_REPO || "rishikesh183/devloop-demo-app";
 
 interface Run {
   id?: string;
