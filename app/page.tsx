@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ThemeToggle } from "./theme-toggle";
 
-const DEMO_REPO = process.env.NEXT_PUBLIC_DEMO_REPO || "rishikesh183/devloop-demo-app";
+const DEMO_REPO = process.env.NEXT_PUBLIC_DEMO_REPO || "manjunath4518/devloop-demo-app";
 
 const STEPS = [
   {
